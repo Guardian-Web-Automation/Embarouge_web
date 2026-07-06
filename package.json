@@ -1,0 +1,22 @@
+{
+  "name": "embarouge-automation",
+  "version": "1.0.0",
+  "description": "Playwright (JavaScript) mobile-view automation for embarouge.in using the Page Object Model",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report"
+  },
+  "keywords": [
+    "playwright",
+    "pom",
+    "mobile",
+    "smoke"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}
