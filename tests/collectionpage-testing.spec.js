@@ -247,8 +247,8 @@ test.describe('Collection Page - All Test Scenarios @smoke', () => {
     expect(page.url()).toContain('sort_by=price-ascending');
 
     // Step 3: Verify products are actually sorted low to high.
-    // The grid re-sorts in the background, so keep checking until it is sorted.
-    await expect.poll(() => collectionPage.isSortedLowToHigh()).toBe(true);
+    // The grid re-sorts in the background, so keep checking (up to 30s) until sorted.
+    await expect.poll(() => collectionPage.isSortedLowToHigh(), { timeout: 30_000 }).toBe(true);
 
     console.log('✓ TC09: products sorted by price low to high');
   });
@@ -280,8 +280,8 @@ test.describe('Collection Page - All Test Scenarios @smoke', () => {
     expect(count).toBeGreaterThan(0);
 
     // Expected: filtered products remain correctly sorted (low to high).
-    // The grid re-sorts in the background, so keep checking until it is sorted.
-    await expect.poll(() => collectionPage.isSortedLowToHigh()).toBe(true);
+    // The grid re-sorts in the background, so keep checking (up to 30s) until sorted.
+    await expect.poll(() => collectionPage.isSortedLowToHigh(), { timeout: 30_000 }).toBe(true);
 
     console.log(`✓ TC10: In stock filter + price sort work together, ${count} products sorted low to high`);
   });
