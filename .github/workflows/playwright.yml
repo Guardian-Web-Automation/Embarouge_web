@@ -1,0 +1,57 @@
+name: Playwright Smoke Tests
+
+# When this workflow runs:
+on:
+  workflow_dispatch:        # lets you run it manually from the Actions tab
+  schedule:
+    - cron: '30 3 * * *'    # every day at 9:00 AM IST (03:30 UTC)
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Get the code
+      - uses: actions/checkout@v4
+
+      # 2. Set up Node.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # 3. Install project packages
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Install the Playwright browser
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      # 5. Run the smoke tests (do not stop the workflow if they fail,
+      #    so we can still send the Slack message and upload the report)
+      - name: Run smoke tests
+        id: tests
+        continue-on-error: true
+        env:
+          TWOCAPTCHA_API_KEY: ${{ secrets.TWOCAPTCHA_API_KEY }}
+        run: npm run test:smoke
+
+      # 6. Save the HTML report so it can be downloaded from the run page
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+      # 7. Send the result to Slack
+      - name: Send Slack notification
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: node scripts/notify-slack.js
+
+      # 8. Mark the workflow as failed if any test failed
+      - name: Fail the job if tests failed
+        if: steps.tests.outcome == 'failure'
+        run: exit 1

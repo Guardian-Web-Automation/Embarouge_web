@@ -6,3 +6,6 @@ playwright/.cache/
 
 # Secret keys - never push these to GitHub
 .env
+
+# Generated test results file (used to build the Slack message)
+results.json

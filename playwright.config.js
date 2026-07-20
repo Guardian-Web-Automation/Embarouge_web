@@ -8,7 +8,8 @@ export default defineConfig({
   fullyParallel: true,
   // Retry once so an occasional slow/throttled response doesn't fail the run.
   retries: 1,
-  reporter: [['list'], ['html', { open: 'never' }]],
+  // list = console output, html = report folder, json = results file for Slack
+  reporter: [['list'], ['html', { open: 'never' }], ['json', { outputFile: 'results.json' }]],
 
   use: {
     baseURL: 'https://embarouge.in',
