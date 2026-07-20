@@ -33,6 +33,7 @@ jobs:
         continue-on-error: true
         env:
           TWOCAPTCHA_API_KEY: ${{ secrets.TWOCAPTCHA_API_KEY }}
+          QA_BYPASS_TOKEN: ${{ secrets.QA_BYPASS_TOKEN }}
         run: npm run test:smoke
 
       # 6. Save the HTML report so it can be downloaded from the run page

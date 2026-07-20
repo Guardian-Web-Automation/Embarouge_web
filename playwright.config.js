@@ -14,10 +14,17 @@ export default defineConfig({
   use: {
     baseURL: 'https://embarouge.in',
     headless: true,
+    // Sends a secret header so a Cloudflare WAF rule can let our tests skip the
+    // "Verify you are human" check. Only added if QA_BYPASS_TOKEN is set (.env / CI secret).
+    extraHTTPHeaders: process.env.QA_BYPASS_TOKEN
+      ? { 'x-qa-bypass': process.env.QA_BYPASS_TOKEN }
+      : {},
     // Slow down each action so you can watch it. Default 0 (full speed).
     // Set SLOWMO (in ms) to slow down, e.g. SLOWMO=1000 for 1 second per step.
     launchOptions: {
       slowMo: Number(process.env.SLOWMO) || 0,
+      // Hide the "automation" flag so Cloudflare is less likely to challenge us.
+      args: ['--disable-blink-features=AutomationControlled'],
     },
     actionTimeout: 15_000,
     // Higher navigation timeout — the live store is slow/throttles heavy traffic.

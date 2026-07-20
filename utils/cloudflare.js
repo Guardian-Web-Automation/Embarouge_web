@@ -1,47 +1,34 @@
-import { Solver } from '@2captcha/captcha-solver';
+// Checks whether Cloudflare is blocking the page with its
+// "Verify you are human" challenge.
+//
+// Note: this challenge is built to stop automation, so it cannot be reliably
+// clicked or solved from code. The reliable fix is to allowlist the tests in
+// Cloudflare (allowlist the test IP, or add a WAF rule that skips the check
+// when the "x-qa-bypass" header is present). See README for setup.
 
-// Read the 2Captcha key from the .env file (loaded in playwright.config.js)
-const solver = new Solver(process.env.TWOCAPTCHA_API_KEY || '');
+async function challengeIsShowing(page) {
+  // The challenge widget loads inside a Cloudflare iframe
+  const frame = page.locator('iframe[src*="challenges.cloudflare.com"]').first();
+  if (await frame.isVisible().catch(() => false)) return true;
 
-// True if the current page is a Cloudflare "Verify you are human" page.
-async function isCloudflareChallenge(page) {
-  const title = (await page.title().catch(() => '')).toLowerCase();
-  if (title.includes('just a moment')) return true;
-
-  // The challenge also shows a Turnstile widget with a data-sitekey
-  const widget = page.locator('[data-sitekey]').first();                       // attribute: data-sitekey
-  return widget.isVisible().catch(() => false);
+  // Or the page text shows the verification message
+  const text = (await page.locator('body').innerText().catch(() => '')).toLowerCase();
+  return text.includes('verify you are human') || text.includes('needs to be verified');
 }
 
-// If a Cloudflare challenge is showing, solve it with 2Captcha and continue.
-// If there is no challenge, this does nothing.
+// If Cloudflare is blocking the page, stop with a clear, helpful error.
 export async function solveCloudflareIfPresent(page) {
-  if (!(await isCloudflareChallenge(page))) return;
-
-  console.log('⚠ Cloudflare challenge detected - solving with 2Captcha...');
-
-  // We need the widget's sitekey and the current page URL to solve it
-  const widget = page.locator('[data-sitekey]').first();
-  const sitekey = await widget.getAttribute('data-sitekey').catch(() => null);
-  const pageUrl = page.url();
-
-  if (!sitekey) {
-    // No sitekey means it is the interactive page - just wait for it to clear
-    await page.waitForFunction(() => !document.title.toLowerCase().includes('just a moment'),
-      null, { timeout: 60_000 }).catch(() => {});
-    return;
+  // Give the page a moment in case Cloudflare clears on its own
+  if (await challengeIsShowing(page)) {
+    await page.waitForTimeout(3000);
   }
 
-  // Ask 2Captcha to solve the Cloudflare Turnstile challenge
-  const answer = await solver.cloudflareTurnstile({ pageurl: pageUrl, sitekey });
-
-  // Put the returned token into the hidden response field so the page accepts it
-  await page.evaluate((token) => {
-    const input = document.querySelector('[name="cf-turnstile-response"]');
-    if (input) input.value = token;
-  }, answer.data);
-
-  // Wait until Cloudflare lets us through to the real page
-  await page.waitForLoadState('domcontentloaded');
-  console.log('✓ Cloudflare challenge solved');
+  if (await challengeIsShowing(page)) {
+    throw new Error(
+      'Blocked by Cloudflare "Verify you are human" challenge.\n' +
+      'Fix: allowlist your test IP in Cloudflare, or add a WAF rule that skips ' +
+      'the challenge when the "x-qa-bypass" header is present (set QA_BYPASS_TOKEN). ' +
+      'See README for steps.'
+    );
+  }
 }
