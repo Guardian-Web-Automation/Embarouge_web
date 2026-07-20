@@ -134,7 +134,12 @@ async function handleCloudflare(page, options = {}) {
 
   const sitekey = await extractSitekey(page);
   if (!sitekey) {
-    throw new Error('Cloudflare challenge detected but could not extract Turnstile sitekey');
+    throw new Error(
+      'Blocked by Cloudflare\'s managed "Just a moment..." challenge. This challenge ' +
+      'type has NO sitekey, so 2Captcha cannot solve it. The only reliable fix is to ' +
+      'allowlist the tests in Cloudflare (allowlist the test IP, or add a WAF rule that ' +
+      'skips the challenge for the "x-qa-bypass" header). See README.'
+    );
   }
 
   const pageurl = page.url();
