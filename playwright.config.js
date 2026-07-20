@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import 'dotenv/config'; // loads the .env file (holds the 2Captcha API key)
 
 export default defineConfig({
   testDir: './tests',

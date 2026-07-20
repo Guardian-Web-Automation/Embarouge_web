@@ -1,3 +1,5 @@
+import { solveCloudflareIfPresent } from '../utils/cloudflare.js';
+
 export class BasePage {
   /** @param {import('@playwright/test').Page} page */
   constructor(page) {
@@ -12,5 +14,7 @@ export class BasePage {
     } catch (error) {
       await this.page.goto(path, { waitUntil: 'domcontentloaded' });
     }
+    // If Cloudflare shows a "Verify you are human" page, solve it and continue.
+    await solveCloudflareIfPresent(this.page);
   }
 }
