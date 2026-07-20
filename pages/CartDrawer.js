@@ -6,27 +6,27 @@ export class CartDrawer extends BasePage {
   constructor(page) {
     super(page);
 
-    this.drawer = page.locator('cart-drawer');                                       // custom element <cart-drawer>
-    this.openContainer = this.drawer.locator('details.cart-drawer-container[open]');  // class: cart-drawer-container + attribute: open
-    // drawer renders A/B control + variant copies, so scope to the first
-    this.heading = this.drawer.getByText(/your bag/i).first();                        // text: "Your Bag"
+    // The cart drawer that is currently open on screen
+    this.openContainer = page.locator('details.cart-drawer-container[open]').first(); // class: cart-drawer-container + attribute: open
 
-    this.cartIcon = this.drawer.locator('summary.header__icon').first();              // class: header__icon (cart toggle)
+    // The store runs an A/B test and renders two cart copies (one hidden).
+    // We always target the VISIBLE copy, so read the "Your Bag [n]" title and
+    // product text from what the shopper actually sees.
+    this.heading = this.openContainer.getByText(/your bag/i).filter({ visible: true }).first(); // text: "Your Bag [n]"
 
-    this.lineItems = page.locator('cart-items li[data-handle]');                      // custom element <cart-items> + attribute: data-handle
-    this.lineItemTitles = this.lineItems.locator('a.product-title');                  // class: product-title
-    this.subtotal = page.locator('.cart-subtotal span.money');                        // class: cart-subtotal + class: money
+    this.cartIcon = page.locator('cart-drawer summary.header__icon').first();        // class: header__icon (cart toggle)
+
     this.checkoutButton = page
-      .getByRole('button', { name: /checkout/i })                                     // role/text: button "Checkout"
-      .or(page.getByRole('link', { name: /checkout/i }));                             // role/text: link "Checkout"
+      .getByRole('button', { name: /checkout/i })                                    // role/text: button "Checkout"
+      .or(page.getByRole('link', { name: /checkout/i }));                            // role/text: link "Checkout"
   }
 
   async waitUntilOpen() {
     await expect(this.openContainer).toBeVisible();
     await expect(this.heading).toBeVisible();
-    // The line items load via a separate cart AJAX call, which can be slow on
-    // the live store, so give this one a longer wait (30s) than the default.
-    await expect(this.lineItems.first()).toBeVisible({ timeout: 30_000 });
+    // The cart fills via an AJAX call, so wait until the title shows at least
+    // one item ("Your Bag [1]"). This works for both A/B cart layouts.
+    await expect.poll(() => this.lineItemCount(), { timeout: 30_000 }).toBeGreaterThan(0);
   }
 
   // Open the cart. If it did not auto-open after Add To Bag, click the cart icon.
@@ -38,19 +38,16 @@ export class CartDrawer extends BasePage {
     await this.waitUntilOpen();
   }
 
+  // Read the number of items from the "Your Bag [n]" title
   async lineItemCount() {
-    return this.lineItems.count();
+    const text = await this.heading.innerText().catch(() => '');
+    const match = text.match(/\[(\d+)\]/);
+    return match ? Number(match[1]) : 0;
   }
 
-  async getLineItemTitles() {
-    return this.lineItemTitles.allInnerTexts();
-  }
-
+  // Check the added product appears in the open cart drawer
   async assertProductInCart(expectedTitle) {
-    const titles = await this.getLineItemTitles();
-    const cartText = titles.join(' ').toLowerCase();
-    const expected = expectedTitle.toLowerCase();
-
-    expect(cartText).toContain(expected);
+    const drawerText = (await this.openContainer.innerText()).toLowerCase();
+    expect(drawerText).toContain(expectedTitle.toLowerCase());
   }
 }

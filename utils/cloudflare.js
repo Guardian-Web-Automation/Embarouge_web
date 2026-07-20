@@ -35,7 +35,12 @@ async function isCloudflareChallenge(page) {
     .count()
     .then((c) => c > 0)
     .catch(() => false);
-  return hasWidget;
+  if (hasWidget) return true;
+
+  // The challenge text is in the page HTML from the start (the Turnstile widget
+  // is added a moment later), so also check the visible text.
+  const bodyText = (await page.locator('body').innerText().catch(() => '')).toLowerCase();
+  return bodyText.includes('verify you are human') || bodyText.includes('needs to be verified');
 }
 
 /**
