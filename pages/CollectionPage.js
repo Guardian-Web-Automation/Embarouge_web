@@ -81,12 +81,22 @@ export class CollectionPage extends BasePage {
     await this.filterButton.click();
   }
 
+  // Shopify updates the filter URL with pushState (no real page navigation),
+  // so we watch the browser URL text instead of waiting for a navigation event.
+  async waitForUrlContains(part) {
+    await this.page.waitForFunction(
+      (p) => window.location.href.includes(p),
+      part,
+      { timeout: 30_000 }
+    );
+  }
+
   // Step: pick "In stock" availability and apply
   async filterByInStock() {
     await this.availabilityOption.click();
     await this.inStockOption.click();
     await this.applyButton.click();
-    await this.page.waitForURL(/filter\.v\.availability/, { waitUntil: 'commit' });
+    await this.waitForUrlContains('filter.v.availability');
     // wait until the filtered grid re-renders and the active filter chip shows
     await this.activeFilters.waitFor();
   }
@@ -123,7 +133,7 @@ export class CollectionPage extends BasePage {
 
     // Apply both at once
     await this.applyButton.click();
-    await this.page.waitForURL(/filter\.v\.price\.gte=\d/, { waitUntil: 'commit' });
+    await this.waitForUrlContains('filter.v.price.gte=');
     await this.activeFilters.waitFor();
   }
 
@@ -133,7 +143,7 @@ export class CollectionPage extends BasePage {
     await this.priceFromInput.fill(String(from));
     await this.priceToInput.fill(String(to));
     await this.applyButton.click();
-    await this.page.waitForURL(/filter\.v\.price\.gte=\d/, { waitUntil: 'commit' });
+    await this.waitForUrlContains('filter.v.price.gte=');
     await this.activeFilters.waitFor();
   }
 
@@ -152,8 +162,8 @@ export class CollectionPage extends BasePage {
   async selectSort(value) {
     await this.sortSummary.click();
     await this.page.locator(`label[for^="Filter-${value}-"]`).first().click();  // for: Filter-<value>-N
-    // wait for the re-sorted grid to load (not just the URL change)
-    await this.page.waitForURL(new RegExp(`sort_by=${value}`), { waitUntil: 'domcontentloaded' });
+    // wait for the sort to be reflected in the URL
+    await this.waitForUrlContains(`sort_by=${value}`);
   }
 
   // Read every product's price as a number (first number in the price text)
@@ -187,7 +197,12 @@ export class CollectionPage extends BasePage {
   // Step: remove all applied filters
   async clearAllFilters() {
     await this.clearAllButton.click();
-    await this.page.waitForURL((url) => !url.href.includes('filter.v'), { waitUntil: 'commit' });
+    // wait until the filter params are gone from the URL
+    await this.page.waitForFunction(
+      () => !window.location.href.includes('filter.v'),
+      null,
+      { timeout: 30_000 }
+    );
   }
 
   // Read the cart badge number on the bag icon. Empty cart = no badge = 0.
